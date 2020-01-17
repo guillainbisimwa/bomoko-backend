@@ -59,7 +59,32 @@ app.post("/register_client", (request, response) => {
     });
 });
 
-
+app.post("/login", (request, response) => {
+    if(!request.body.phone){
+        return response.status(401).send({ "message": "Veiller completer le numero de telephone"});
+    } else if(!request.body.password){
+        return response.status(401).send({ "message": "Veiller completer le mots de passe"});
+    }
+    bucket.get(request.body.phone, (error, result) => {
+        if(error){
+            return response.status(500).send(error);
+        }
+        if(!BCrypt.compareSync(request.body.password, result.value.password)){
+            return response.status(401).send({ "message": "Le mots de passe est invalide"});
+        }
+        var id = UUID.v4();
+        var session = {
+            "type": "session",
+            "pid": result.value.pid
+        }
+        bucket.insert(id, session, {"expiry":3600}, (error, result) => {
+            if(error){
+                return response.status(500).send(error);
+            }
+            response.send({"sid": id});
+        });
+    });
+});
 
 // app.post("/group", (request, response) => {
 
