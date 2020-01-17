@@ -11,13 +11,30 @@ app.use(BodyParser.json());
 app.use(BodyParser.urlencoded({extended: true}));
 
 var cluster = new Couchbase.Cluster("couchbase://127.0.0.1");
-//var bucket = cluster.openBucket("travel-sample", "");
 // For Couchbase > 4.5 with RBAC Auth
 cluster.authenticate('gbisimwa', 'changeme')
-//var bucket = cluster.openBucket('default');
 var bucket = cluster.openBucket("BOMOKO_DATA");
 
-
+var validate = function(request, response, next){
+    var authHeader = request.headers["authorization"];
+    if(authHeader){
+        bomokoToken = authHeader.split(" ");
+        if(bomokoToken.length == 2){
+            bucket.get(bomokoToken[1], (error, result) => {
+                if(error){
+                    return response.status(500).send(error);
+                }
+                request.pid = result.value.pid;
+                bucket.touch(bomokoToken[1], 3600, (error, result)=>{});
+                next();
+            });
+        } else {
+            return response.status(401).send({ "message": "Bomoko Token is malformed"});
+        }
+    } else {
+        return response.status(401).send({ "message": "An authorization header is required"});
+    }
+}
 
 app.post("/register_client", (request, response) => {
     if(!request.body.phone){
@@ -32,14 +49,7 @@ app.post("/register_client", (request, response) => {
         "phone": request.body.phone,
         "password": BCrypt.hashSync(request.body.password, 10)
     }
-    /**
-     * "username": "gbisimwa",
-     * "password": "123",
-     * "nom": "Guillain",
-     * "phone": "+24312345678",
-     * "sexe": "M",
-     * "address": "Goma"
-     */
+    
     var profile = request.body;
     profile.type = "profile";
 
