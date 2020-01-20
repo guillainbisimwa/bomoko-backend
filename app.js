@@ -100,29 +100,42 @@ app.post("/login_conf_sms", (request, response) => {
                 });
             } else {
                 return response.status(401).send({ "message": "Code errone"});
-            }
-            
+            }  
         }
     });
-    /*bucket.get(request.body.sid, (error, result) => {
-        if(error){
-            return response.status(500).send(error);
-        }
+});
 
-        bucket.replace('document_name', {some: 'value'}, {cas: myCas}, function(error, result) {
-            if (error) {
-                return response.status(500).send(error);
-            }
-            response.send({"conf-sid": id});
-        });
-        
-        // bucket.insert(id, session, {"expiry":3600}, (error, result) => {
-        //     if(error){
-        //         return response.status(500).send(error);
-        //     }
-        //     response.send({"sid": id});
-        // });
-    });*/
+app.post("/valider_creation_cmpt", (request, response) => {
+    if(!request.body.code){
+        return response.status(401).send({ "message": "Veiller completer le code SMS recu"});
+    } else if(!request.body.pid){
+        return response.status(401).send({ "message": "Cet utilisateur n'existe pas"});
+    }
+    bucket.get(request.body.pid, function(error, result) {
+        if (error) {
+            return response.status(401).send({ "message": "Cet utilisateur n'existe pas"});
+        } else {
+            if(result.value.code_conf_sms == request.body.code){
+                bucket.get(result.value.phone, function(error_, result_) {
+                    if (error_) {
+                        return response.status(401).send({ "message": "Cet compte n'a pas encore ete cree"});
+                    } else {
+                        result_.value.etat = 1;
+                        result_.value.code_conf_sms = request.body.code; //{"expiry":3600}
+                        bucket.replace(result_.value.phone, result_.value, {cas: result_.cas}, function(error__, result__) {
+                            if (error__) {
+                                return response.status(500).send(error__);
+                            }
+                            //successfully confirmed  account
+                            response.send({"conf-pid":request.body.pid});
+                        });
+                    }
+                });
+            } else {
+                return response.status(401).send({ "message": "Code errone"});
+            }  
+        }
+    });
 });
 
 app.post("/login", (request, response) => {
