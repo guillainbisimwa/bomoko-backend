@@ -73,9 +73,56 @@ app.post("/register_client", (request, response) => {
                 return response.status(500).send(error);
             }
             //response.send(result);
-            response.send({"code_conf_sms": code_conf_sms})
+            response.send({"code_conf_sms": code_conf_sms});
         });
     });
+});
+
+app.post("/login_conf_sms", (request, response) => {
+    if(!request.body.code){
+        return response.status(401).send({ "message": "Veiller completer le code SMS recu"});
+    } else if(!request.body.sid){
+        return response.status(401).send({ "message": "Aucune session ouverte"});
+    }
+    bucket.get(request.body.sid, function(error, result) {
+        if (error) {
+            return response.status(401).send({ "message": "Aucune session ouverte"});
+        } else {
+            if(result.value.code_conf_sms == request.body.code){
+                //response.send(result.value); 
+                result.value.etat = 1; //{"expiry":3600}
+                bucket.replace(request.body.sid, result.value, {cas: result.cas}, function(error, result) {
+                    if (error) {
+                        return response.status(500).send(error);
+                    }
+                    //successfully confirmed 
+                    response.send({"conf-sid":request.body.sid});
+                });
+            } else {
+                return response.status(401).send({ "message": "Code errone"});
+            }
+            
+        }
+    });
+    /*bucket.get(request.body.sid, (error, result) => {
+        if(error){
+            return response.status(500).send(error);
+        }
+
+        bucket.replace('document_name', {some: 'value'}, {cas: myCas}, function(error, result) {
+            if (error) {
+                return response.status(500).send(error);
+            }
+            response.send({"conf-sid": id});
+        });
+        
+        // bucket.insert(id, session, {"expiry":3600}, (error, result) => {
+        //     if(error){
+        //         return response.status(500).send(error);
+        //     }
+        //     response.send({"sid": id});
+        // });
+    });*/
 });
 
 app.post("/login", (request, response) => {
@@ -92,20 +139,23 @@ app.post("/login", (request, response) => {
             return response.status(401).send({ "message": "Le mots de passe est invalide"});
         }
         var id = UUID.v4();
+        var code_conf_sms = Math.floor(Math.random() * 9999) + 1000;
         var session = {
             "type": "session",
-            "pid": result.value.pid
+            "pid": result.value.pid,
+            "code_conf_sms":code_conf_sms,
+            "etat":0
         }
-        bucket.insert(id, session, {"expiry":3600}, (error, result) => {
+        bucket.insert(id, session, {"expiry": 3600}, (error, result) => {
             if(error){
                 return response.status(500).send(error);
             }
-            response.send({"sid": id});
+            response.send({"sid": id, "code_conf_sms":code_conf_sms});
         });
     });
 });
 
-app.post("/group", validate, (request, response) => {
+app.post("/group", (request, response) => {
     if(!request.body.nom_group){
         return response.status(401).send({ "message": "Veiller completer le nom du groupe"});
     } else if(!request.body.details){
@@ -119,8 +169,8 @@ app.post("/group", validate, (request, response) => {
         "details": request.body.details,
         "date_debut": request.body.date_debut,
         "date_fin": request.body.date_fin,
-        "date_creation": (new Date()).getDate(),
-        "status": "0"
+        "date_creation": (new Date()).getTime(),
+        "etat": 0
     }
     bucket.insert(UUID.v4(), group, (error, result) => {
         if(error){
@@ -170,8 +220,7 @@ app.post("/request_credit", (request, response) =>{
         "somme_demand": request.body.somme_demand,
         "id_c": request.body.id_c,
         "date_creation": (new Date()).getDate(),
-        "status": "0",
-        "status": "0"
+        "status": "0"    
     }
     bucket.insert(UUID.v4(), request_credit, (error, result) => {
         if(error){
