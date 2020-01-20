@@ -193,7 +193,59 @@ app.post("/group", (request, response) => {
     });
 });
 
-app.post("/credit", (request, response) =>{
+app.post("/devenir_mbr_group", (request, response) => {
+    if(!request.body.pid){
+        return response.status(401).send({ "message": "Veillez vous identifier"});
+    } else if(!request.body.id_g){
+        return response.status(401).send({ "message": "Veillez selectionner un groupe"});
+    }
+    bucket.get(request.body.pid, function(error, result) {
+        if (error) {
+            return response.status(401).send({ "message": "Aucun utilisateur trouve"});
+        } else {
+            if(result.value.id_g == ""){
+                //response.send(result.value); 
+                result.value.id_g = request.body.id_g; //{"expiry":3600}
+                bucket.replace(request.body.pid, result.value, {cas: result.cas}, function(error, result) {
+                    if (error) {
+                        return response.status(500).send(error);
+                    }
+                    //successfully confirmed 
+                    response.send({"pid":request.body.pid , "id_g":request.body.id_g});
+                });
+            } else {
+                return response.status(401).send({ "message": "Vous appartenez deja a un groupe"});
+            }  
+        }
+    });
+});
+
+app.post("/quitter_un_group", (request, response) => {
+    if(!request.body.pid){
+        return response.status(401).send({ "message": "Veillez vous identifier"});
+    }
+    bucket.get(request.body.pid, function(error, result) {
+        if (error) {
+            return response.status(401).send({ "message": "Aucun utilisateur trouve"});
+        } else {
+            if(result.value.id_g != ""){
+                //response.send(result.value); 
+                result.value.id_g = ""; //{"expiry":3600}
+                bucket.replace(request.body.pid, result.value, {cas: result.cas}, function(error, result) {
+                    if (error) {
+                        return response.status(500).send(error);
+                    }
+                    //successfully confirmed 
+                    response.send({"pid":request.body.pid});
+                });
+            } else {
+                return response.status(401).send({ "message": "Vous n'appartenez a aucun groupe"});
+            }  
+        }
+    });
+});
+
+app.post("/credit", (request, response) => {
     if(!request.body.id_g){
         return response.status(401).send({ "message": "Veiller completer le nom du groupe"});
     } else if(!request.pid){
