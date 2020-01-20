@@ -40,3 +40,10 @@ Look for the container and start it
 }
 
 ## Exemple of post::register_client
+{
+    "nom_group": "GOMA UNITY",
+    "id_responsable": "",
+    "details": "Groupe de volontaires vendeuse de SAMAKI",
+    "date_debut": 1579514817538,
+    "date_fin": 1579514817538
+}
