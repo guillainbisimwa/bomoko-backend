@@ -248,19 +248,19 @@ app.post("/quitter_un_group", (request, response) => {
 app.post("/credit", (request, response) => {
     if(!request.body.id_g){
         return response.status(401).send({ "message": "Veiller completer le nom du groupe"});
-    } else if(!request.pid){
+    } else if(!request.body.id_demandeur){
         return response.status(401).send({ "message": "Veiller completer le demandeur"});
     }
     var credit = {
         "type": "credit",
-        "pid":request.pid,
         "id_g": request.body.id_g,
         "id_demandeur": request.body.id_demandeur,
-        "date_debut": request.body.date_debut,
-        "date_fin": request.body.date_fin,
-        "date_creation": (new Date()).getDate(),
-        "status": "0",
-        "saison": request.saison
+        "date_creation": (new Date()).getTime(),
+        "somme": request.body.somme,
+        "cat": request.body.cat,
+        "etat": "0",
+        "id_echeance":"",
+        "saison": (new Date()).getTime()
     }
     bucket.insert(UUID.v4(), credit, (error, result) => {
         if(error){
@@ -270,33 +270,115 @@ app.post("/credit", (request, response) => {
     });
 });
 
-app.post("/request_credit", (request, response) =>{
-    if(!request.body.id_demandeur){
-        return response.status(401).send({ "message": "Veiller completer le nom du demandeur"});
-    } else if(!request.pid){
-        return response.status(401).send({ "message": "Veiller completer le demandeur"});
-    }else if(!request.somme_demand){
-        return response.status(401).send({ "message": "Veiller completer la somme_demand"});
+// app.post("/request_credit", (request, response) =>{
+//     if(!request.body.id_demandeur){
+//         return response.status(401).send({ "message": "Veiller completer le nom du demandeur"});
+//     } else if(!request.pid){
+//         return response.status(401).send({ "message": "Veiller completer le demandeur"});
+//     }else if(!request.somme_demand){
+//         return response.status(401).send({ "message": "Veiller completer la somme_demand"});
+//     }
+//     var request_credit = {
+//         "type": "request_credit",
+//         "pid":request.pid,
+//         "id_demandeur": request.body.id_demandeur,
+//         "somme_demand": request.body.somme_demand,
+//         "id_c": request.body.id_c,
+//         "date_creation": (new Date()).getDate(),
+//         "status": "0"    
+//     }
+//     bucket.insert(UUID.v4(), request_credit, (error, result) => {
+//         if(error){
+//             return response.status(500).send(error);
+//         }
+//         response.send(request_credit);
+//         // TODO Create automatically echeance
+//         // TODO Create automatically payments
+//     });
+// });
+
+app.post("/valider_request_credit", (request, response) =>{
+    if(!request.body.id_c){
+        return response.status(401).send({ "message": "Vous n'avez pas de credit"});
+    } else if(!request.body.intrt){
+        return response.status(401).send({ "message": "Veiller completer l'interet"});
     }
-    var request_credit = {
-        "type": "request_credit",
-        "pid":request.pid,
-        "id_demandeur": request.body.id_demandeur,
-        "somme_demand": request.body.somme_demand,
-        "id_c": request.body.id_c,
-        "date_creation": (new Date()).getDate(),
-        "status": "0"    
-    }
-    bucket.insert(UUID.v4(), request_credit, (error, result) => {
-        if(error){
-            return response.status(500).send(error);
+
+    bucket.get(request.body.id_c, function(error, result) {
+        if (error) {
+            return response.status(401).send({ "message": "Vous n'avez pas de credit"});
+        } else {
+
+            //valider credit et creer echeance
+            if(result.value.etat <= 0){//== 1
+                return response.status(401).send({ "message": "Votre credit est dja valide"});
+            }else {
+                bucket.get(result.value.id_g, function(error_g, result_g) {
+                    if (error_g) {
+                        return response.status(401).send({ "message": "Vous n'avez pas de groupe"});
+                    } else {
+                        var id_echeance = UUID.v4();
+                        result.value.etat = 1;
+                        result.value.id_echeance = id_echeance;
+                        bucket.replace(request.body.id_c, result.value, {cas: result.cas}, function(error_, result_) {
+                            if (error_) {
+                                return response.status(500).send(error_);
+                            }
+                            //console.log(result.value)
+                            // successfully confirmed 
+                            // Generate Echeance documents
+                            // TODO df = Difference DATE DEBUT et DATE FIN. / CAT 
+                            // To set two dates to two variables 
+                            //1577854800000 : new Date("01/01/2020"); 
+                            //1583125200000 : new Date("03/02/2020"); 
+                            
+                            var somme = parseFloat(result.value.somme);
+                            var cat = parseFloat(result.value.cat);
+                            var interet = parseFloat(request.body.intrt);
+                            var days = (result_g.value.date_fin - result_g.value.date_debut) / (1000 * 3600 * 24);
+                            var nbr_jr = Math.round(days/cat);
+                            
+                            var somme_echeance_single = somme / nbr_jr;
+                            var interet_echeance_tot =  (somme * interet)/100;
+                            var interet_echeance_single = interet_echeance_tot / nbr_jr;
+                            var echeance = [];
+
+                            date_ech = parseFloat(result_g.value.date_debut);
+                            
+                            for(i = 0; i < nbr_jr; i++){
+                                date_ech = date_ech + cat;
+                                id_c = request.body.id_c;
+                                etat = 0;
+
+                                somme_intert = somme_echeance_single + interet_echeance_single;
+
+                                echeance.push({
+                                    id: i,
+                                    date_ech: date_ech,
+                                    //id_c: id_c,
+                                    etat: etat,
+                                    somme_intert: somme_intert,
+                                    somme_sans_inter: somme_echeance_single,
+                                    inter: interet_echeance_single,
+                                });
+                            }
+                            
+                            var echeance_obj = { ...echeance }
+
+                            bucket.insert(id_echeance, echeance_obj, (error_e, result) => {
+                                if(error_e){
+                                    return response.status(500).send(error_e);
+                                }
+                                response.send(echeance_obj);
+                                //console.log({"echeance":echeance_obj});
+                            });
+                        });
+                    }
+                });
+            }      
         }
-        response.send(request_credit);
-        // TODO Create automatically echeance
-        // TODO Create automatically payments
     });
 });
-
 /** 
  * GET methods
  * 

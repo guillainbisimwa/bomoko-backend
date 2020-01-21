@@ -44,6 +44,23 @@ Look for the container and start it
     "nom_group": "GOMA UNITY",
     "id_responsable": "",
     "details": "Groupe de volontaires vendeuse de SAMAKI",
-    "date_debut": 1579514817538,
-    "date_fin": 1579514817538
+    "date_debut": "1579514817538",
+    "date_fin": "1579514817538"
+}
+
+## Exemple of post::credit ("type": 30 #mensuel : 30, hebdo: 7)
+{
+    "id_g":"",
+    "id_demandeur":"",
+    "somme":"150",
+    "cat": 30 #mensuel : 30, hebdo: 7
+}
+
+## Exemple of post::echeance
+{
+    "id_c":"",
+    "somme":"150",
+    "somme_intrt":"152",
+    "date_remise":"1579514817538",
+    "num_order":1
 }
