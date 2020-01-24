@@ -72,8 +72,11 @@ app.post("/register_client", (request, response) => {
                 });
                 return response.status(500).send(error);
             }
-            //response.send(result);
-            response.send({"code_conf_sms": code_conf_sms});
+            const data = {
+                code_conf_sms:code_conf_sms
+            }
+            response.status(200).send(data)
+
         });
     });
 });
@@ -383,6 +386,45 @@ app.post("/valider_request_credit", (request, response) =>{
  * GET methods
  * 
  **/
+app.get("/client_by_pid/:id_", (request, response) =>{
+    const pid = request.params.id_
+    bucket.get(pid, function(error, result) {
+        if (error) {
+            return response.status(401).send({ "message": "Cet compte n'a pas encore ete cree"});
+        } else {
+            response.send(result.value);
+        }
+    });
+});
+
+app.get("/client_by_phone/:phone_", (request, response) =>{
+    const phone = request.params.phone_
+    console.log(phone)
+    var query = N1qlQuery.fromString("SELECT "+bucket._name+".* FROM "+bucket._name+" WHERE phone = $phone ");
+    bucket.query(query, { "phone": phone}, (error, result)=>{
+        if(error){
+            return response.status(500).send(error);
+        }
+        console.log(result)
+        response.send(result);
+    })
+});
+
+app.get("/clients", (request, response) =>{
+    const id = request.params.id_
+    var query = N1qlQuery.fromString("SELECT "+bucket._name+".* FROM "+bucket._name+" WHERE type = 'profile'");
+    bucket.query(query, { "id": id}, (error, result)=>{
+        if(error){
+            return response.status(500).send(error);
+        }
+        console.log(result)
+        response.send(result);
+    })
+    //console.log(id)
+    //response.send({"id: ":id});
+    //console.log(response)
+});
+
 app.get("/group", (request, response) => {
     var query = N1qlQuery.fromString("SELECT "+bucket._name+".* FROM "+bucket._name+" WHERE type = 'group' AND pid=$id");
     bucket.query(query, { "id": request.pid}, (error, result)=>{
