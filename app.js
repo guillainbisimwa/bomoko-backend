@@ -10,7 +10,9 @@ var N1qlQuery = Couchbase.N1qlQuery;
 app.use(BodyParser.json());
 app.use(BodyParser.urlencoded({extended: true}));
 
-var cluster = new Couchbase.Cluster("couchbase://127.0.0.1");
+//var cluster = new Couchbase.Cluster("couchbase://127.0.0.1");
+var cluster = new Couchbase.Cluster("couchbase://35.223.175.69");
+//http://35.223.175.69/
 // For Couchbase > 4.5 with RBAC Auth
 cluster.authenticate('gbisimwa', 'changeme')
 var bucket = cluster.openBucket("BOMOKO_DATA");
@@ -48,7 +50,7 @@ app.post("/register_client", (request, response) => {
         "pid": id,
         "phone": request.body.phone,
         "id_g" : "",
-        "code_conf_sms" : "",
+        "code_conf_sms" : code_conf_sms,
         "type": "account",
         "date_creation": (new Date()).getTime(),
         "etat": 0, // 0: En attente, 1: Valide, 2: Rejette
@@ -58,6 +60,7 @@ app.post("/register_client", (request, response) => {
     var profile = request.body;
     profile.type = "profile";
     profile.code_conf_sms = code_conf_sms;
+    profile.etat = "0";
 
     delete profile.password;
     
@@ -72,10 +75,7 @@ app.post("/register_client", (request, response) => {
                 });
                 return response.status(500).send(error);
             }
-            const data = {
-                code_conf_sms:code_conf_sms
-            }
-            response.status(200).send(data)
+            response.status(200).send(account)
 
         });
     });
@@ -108,13 +108,64 @@ app.post("/login_conf_sms", (request, response) => {
     });
 });
 
+/**
+ * POST FROM  rmlconnect
+ * Username	:	guillainb
+ * Password	:	lPhhex3H
+ * Smpp Server	:	api.rmlconnect.net
+ * Smpp Port	:	2351
+ * Credit	:	€ 0
+ * Manager Name	:	akbar.inamdar
+ * Bulk Http Link :
+ * 
+ * msg_detail:
+ * msg_code:
+ * phone:
+ * sender: "BOMOKO APP" //default
+ * 
+ */
+
+app.post("/send_sms_from_rmlconnect", (request, response) => {
+    if(!request.body.phone){
+        return response.status(401).send({ "message": "Veiller completer le numero du client"});
+    } else if(!request.body.msg_code){
+        return response.status(401).send({ "message": "Veiller completer le message cle!"});
+    }
+   // http://api.rmlconnect.net/bulksms/bulksms?username=xxxxxxxx&password=xxxxxx&type=0&dlr=1&destination=xxxxxxxxxx&source=Demo&message=Demo%20Message
+   var username = "guillainb";
+   var password = "lPhhex3H";
+   var source = "BOMOKO APP";
+   var msg = request.body.msg_detail +" "+ request.body.msg_code;
+
+    fetch('http://api.rmlconnect.net/bulksms/bulksms?username='+username+'&password='+password+'&type=0&dlr=1&destination='+request.body.phone+'&source='+source+'o&message='+msg, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body:JSON.stringify({
+            nom: nom_,
+            phone: phone_,
+            password:conf_password           
+        })
+    }).then((response) => response.json())
+      //If response is in json then in success
+    .then((responseJson) => {
+          //Success 
+    }) //If response is not in json then in error
+    .catch((error) => {
+        //Error 
+        console.error(error);
+    });
+});
+
 app.post("/valider_creation_cmpt", (request, response) => {
     if(!request.body.code){
         return response.status(401).send({ "message": "Veiller completer le code SMS recu"});
-    } else if(!request.body.pid){
+    } else if(!request.body.id){
         return response.status(401).send({ "message": "Cet utilisateur n'existe pas"});
     }
-    bucket.get(request.body.pid, function(error, result) {
+    bucket.get(request.body.id, function(error, result) {
         if (error) {
             return response.status(401).send({ "message": "Cet utilisateur n'existe pas"});
         } else {
@@ -130,7 +181,9 @@ app.post("/valider_creation_cmpt", (request, response) => {
                                 return response.status(500).send(error__);
                             }
                             //successfully confirmed  account
-                            response.send({"conf-pid":request.body.pid});
+                            //response.send({"conf-id":request.body.id});
+                            response.status(200).send(result_.value)
+
                         });
                     }
                 });
@@ -149,7 +202,7 @@ app.post("/login", (request, response) => {
     }
     bucket.get(request.body.phone, (error, result) => {
         if(error){
-            return response.status(500).send(error);
+            return response.status(500).send({ "message": "Ce numero de telephone n'exite pas encore"});
         }
         if(!BCrypt.compareSync(request.body.password, result.value.password)){
             return response.status(401).send({ "message": "Le mots de passe est invalide"});
@@ -159,14 +212,16 @@ app.post("/login", (request, response) => {
         var session = {
             "type": "session",
             "pid": result.value.pid,
-            "code_conf_sms":code_conf_sms,
+            //"code_conf_sms":code_conf_sms,
             "etat":0
         }
         bucket.insert(id, session, {"expiry": 3600}, (error, result) => {
             if(error){
                 return response.status(500).send(error);
             }
-            response.send({"sid": id, "code_conf_sms":code_conf_sms});
+            //response.send({"sid": id, "code_conf_sms":code_conf_sms});
+            session.sid = id;
+            response.status(200).send({session});
         });
     });
 });
@@ -399,15 +454,13 @@ app.get("/client_by_pid/:id_", (request, response) =>{
 
 app.get("/client_by_phone/:phone_", (request, response) =>{
     const phone = request.params.phone_
-    console.log(phone)
-    var query = N1qlQuery.fromString("SELECT "+bucket._name+".* FROM "+bucket._name+" WHERE phone = $phone ");
-    bucket.query(query, { "phone": phone}, (error, result)=>{
-        if(error){
-            return response.status(500).send(error);
+    bucket.get(phone, function(error, result) {
+        if (error) {
+            return response.status(401).send({ "message": "Cet compte n'a pas encore ete cree "+phone});
+        } else {
+            response.send(result.value);
         }
-        console.log(result)
-        response.send(result);
-    })
+    });
 });
 
 app.get("/clients", (request, response) =>{
