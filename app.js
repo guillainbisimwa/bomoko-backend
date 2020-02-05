@@ -7,12 +7,13 @@ var BCrypt = require("bcryptjs");
 var app = Express();
 var N1qlQuery = Couchbase.N1qlQuery;
 
+var request1 = require('request');
+
 app.use(BodyParser.json());
 app.use(BodyParser.urlencoded({extended: true}));
 
-//var cluster = new Couchbase.Cluster("couchbase://127.0.0.1");
-var cluster = new Couchbase.Cluster("couchbase://35.223.175.69");
-//http://35.223.175.69/
+var cluster = new Couchbase.Cluster("couchbase://127.0.0.1");
+//var cluster = new Couchbase.Cluster("couchbase://35.223.175.69");
 // For Couchbase > 4.5 with RBAC Auth
 cluster.authenticate('gbisimwa', 'changeme')
 var bucket = cluster.openBucket("BOMOKO_DATA");
@@ -131,31 +132,18 @@ app.post("/send_sms_from_rmlconnect", (request, response) => {
     } else if(!request.body.msg_code){
         return response.status(401).send({ "message": "Veiller completer le message cle!"});
     }
-   // http://api.rmlconnect.net/bulksms/bulksms?username=xxxxxxxx&password=xxxxxx&type=0&dlr=1&destination=xxxxxxxxxx&source=Demo&message=Demo%20Message
-   var username = "guillainb";
-   var password = "lPhhex3H";
-   var source = "BOMOKO APP";
-   var msg = request.body.msg_detail +" "+ request.body.msg_code;
+    
+    var phone = request.body.phone.substring(1);
+    var username = "guillainb";
+    var password = "lPhhex3H";
+    var source = "BOMOKO APP";
+    var msg = request.body.msg_detail +" "+ request.body.msg_code;
 
-    fetch('http://api.rmlconnect.net/bulksms/bulksms?username='+username+'&password='+password+'&type=0&dlr=1&destination='+request.body.phone+'&source='+source+'o&message='+msg, {
-        method: 'POST',
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body:JSON.stringify({
-            nom: nom_,
-            phone: phone_,
-            password:conf_password           
-        })
-    }).then((response) => response.json())
-      //If response is in json then in success
-    .then((responseJson) => {
-          //Success 
-    }) //If response is not in json then in error
-    .catch((error) => {
-        //Error 
-        console.error(error);
+    request1('http://api.rmlconnect.net/bulksms/bulksms?username='+username+'&password='+password+'&type=0&dlr=1&destination='+phone+'&source='+source+'&message='+msg, function (error1, response1, body1) {
+        console.error('error:', error1); // Print the error if one occurred
+        console.log('statusCode:', response1 && response1.statusCode);
+        console.log('body:', body1); 
+        response.status(response1.statusCode).send({ "message": "Code envoye avec success"});
     });
 });
 
@@ -231,7 +219,10 @@ app.post("/group", (request, response) => {
         return response.status(401).send({ "message": "Veiller completer le nom du groupe"});
     } else if(!request.body.details){
         return response.status(401).send({ "message": "Veiller completer le detail du groupe"});
+    } else if(!request.body.somme){
+        return response.status(401).send({ "message": "Veiller completer la somme du groupe"});
     }
+    
     var group = {
         "type": "group",
         "pid":request.pid,
@@ -240,6 +231,9 @@ app.post("/group", (request, response) => {
         "details": request.body.details,
         "date_debut": request.body.date_debut,
         "date_fin": request.body.date_fin,
+        "somme": request.body.somme,
+        "taux": request.body.taux,
+        "cat": request.body.cat,
         "date_creation": (new Date()).getTime(),
         "etat": 0
     }
@@ -485,6 +479,23 @@ app.get("/group", (request, response) => {
             return response.status(500).send(error);
         }
         response.send(result);
+    })
+});
+
+
+app.get("/group_by_name/:name_", (request, response) => {
+    const name = request.params.name_
+    var query = N1qlQuery.fromString("SELECT "+bucket._name+".* FROM "+bucket._name+" WHERE type = 'group' AND nom_group=$1");
+    bucket.query(query,[name], (error, result)=>{
+        if(error){
+            return response.status(500).send({"message":"Ce groupe n'existe pas!"});
+        }
+        else if(result.length > 0){
+            response.send(result);
+        }
+        else {
+            return response.status(500).send({"message":"Ce groupe n'existe pas!"});
+        }
     })
 });
 
