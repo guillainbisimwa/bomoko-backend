@@ -201,15 +201,16 @@ app.post("/login", (request, response) => {
             "type": "session",
             "pid": result.value.pid,
             //"code_conf_sms":code_conf_sms,
-            "etat":0
+            "etat":0,
+            "phone":request.body.phone
         }
-        bucket.insert(id, session, {"expiry": 3600}, (error, result) => {
+        bucket.insert(id, session, {"expiry": 36000}, (error, result) => {
             if(error){
                 return response.status(500).send(error);
             }
             //response.send({"sid": id, "code_conf_sms":code_conf_sms});
             session.sid = id;
-            response.status(200).send({session});
+            response.status(200).send(session);
         });
     });
 });
