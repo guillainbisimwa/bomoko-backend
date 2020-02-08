@@ -236,7 +236,8 @@ app.post("/group", (request, response) => {
         "taux": request.body.taux,
         "cat": request.body.cat,
         "date_creation": (new Date()).getTime(),
-        "etat": 0
+        "etat": 0,
+        "nbr_jour":request.body.nbr_jour
     }
     bucket.insert(UUID.v4(), group, (error, result) => {
         if(error){
