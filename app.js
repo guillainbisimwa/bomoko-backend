@@ -13,7 +13,7 @@ app.use(BodyParser.json());
 app.use(BodyParser.urlencoded({extended: true}));
 
 //var cluster = new Couchbase.Cluster("couchbase://127.0.0.1");
-var cluster = new Couchbase.Cluster("couchbase://35.223.175.69");
+var cluster = new Couchbase.Cluster("couchbase://35.223.156.137");
 // For Couchbase > 4.5 with RBAC Auth
 cluster.authenticate('gbisimwa', 'changeme')
 var bucket = cluster.openBucket("BOMOKO_DATA");
