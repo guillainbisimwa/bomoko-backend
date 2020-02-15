@@ -23,7 +23,7 @@ Look for the container and start it
 `sudo docker start 6d045d0c9a80`
 
 `docker logs db`
-`http://localhost:8091`
+`http://192.168.56.1:8091`
 
 # To acces the host from emulator (genymotion)
 look for the inet of vboxnet0

@@ -12,8 +12,8 @@ var request1 = require('request');
 app.use(BodyParser.json());
 app.use(BodyParser.urlencoded({extended: true}));
 
-//var cluster = new Couchbase.Cluster("couchbase://127.0.0.1");
-var cluster = new Couchbase.Cluster("couchbase://35.223.156.137");
+var cluster = new Couchbase.Cluster("couchbase://localhost");
+//var cluster = new Couchbase.Cluster("couchbase://localhost");
 // For Couchbase > 4.5 with RBAC Auth
 cluster.authenticate('gbisimwa', 'changeme')
 var bucket = cluster.openBucket("BOMOKO_DATA");
@@ -472,6 +472,18 @@ app.get("/clients", (request, response) =>{
     //console.log(id)
     //response.send({"id: ":id});
     //console.log(response)
+});
+
+app.get("/accounts", (request, response) =>{
+    const id = request.params.id_
+    var query = N1qlQuery.fromString("SELECT "+bucket._name+".* FROM "+bucket._name+" WHERE type = 'account'");
+    bucket.query(query, { "id": id}, (error, result)=>{
+        if(error){
+            return response.status(500).send(error);
+        }
+        console.log(result)
+        response.send(result);
+    })
 });
 
 app.get("/group", (request, response) => {
