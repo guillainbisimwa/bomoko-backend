@@ -514,7 +514,7 @@ app.get("/group_by_name/:name_", (request, response) => {
 });
 
 app.get("/groups", (request, response) => {
-    var query = N1qlQuery.fromString("SELECT "+bucket._name+".* FROM "+bucket._name+" WHERE type = 'group'");
+    var query = N1qlQuery.fromString("SELECT  META().id, "+bucket._name+".* FROM "+bucket._name+" WHERE type = 'group'");
     bucket.query(query, (error, result)=>{
         if(error){
             return response.status(500).send(error);
