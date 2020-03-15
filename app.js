@@ -320,25 +320,9 @@ app.post("/credit", (request, response) => {
         if(error){
             //return response.status(500).send(error);
             return response.status(500).send({ "message": "Erreur interne du serveur"});
-
         }
         response.send(credit);
     });
-});
-
-app.get("/credits", (request, response) =>{
-    const id = request.params.id_
-    var query = N1qlQuery.fromString("SELECT "+bucket._name+".* FROM "+bucket._name+" WHERE type = 'credit'");
-    bucket.query(query, { "id": id}, (error, result)=>{
-        if(error){
-            return response.status(500).send(error);
-        }
-        console.log(result)
-        response.send(result);
-    })
-    //console.log(id)
-    //response.send({"id: ":id});
-    //console.log(response)
 });
 
 app.post("/valider_request_credit", (request, response) =>{
@@ -459,9 +443,34 @@ app.get("/clients", (request, response) =>{
         console.log(result)
         response.send(result);
     })
-    //console.log(id)
-    //response.send({"id: ":id});
-    //console.log(response)
+});
+
+app.get("/credits", (request, response) =>{
+    const id = request.params.id_
+    var query = N1qlQuery.fromString("SELECT META().id, "+bucket._name+".* FROM "+bucket._name+" WHERE type = 'credit'");
+    bucket.query(query, { "id": id}, (error, result)=>{
+        if(error){
+            return response.status(500).send(error);
+        }
+        console.log(result)
+        response.send(result);
+    })
+});
+
+app.get("/credit_by_pid/:id_demandeur", (request, response) => {
+    const _id_demandeur = request.params.id_demandeur
+    var query = N1qlQuery.fromString("SELECT "+bucket._name+".* FROM "+bucket._name+" WHERE type = 'credit' AND id_demandeur=$1");
+    bucket.query(query,[_id_demandeur], (error, result)=>{
+        if(error){
+            return response.status(500).send({"message":"Aucun credit disponible a ce nom!"});
+        }
+        else if(result.length > 0){
+            response.send(result);
+        }
+        else {
+            return response.status(500).send({"message":"Aucun credit disponible a ce nom!"});
+        }
+    })
 });
 
 app.get("/accounts", (request, response) =>{
