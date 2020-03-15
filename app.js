@@ -12,8 +12,8 @@ var request1 = require('request');
 app.use(BodyParser.json());
 app.use(BodyParser.urlencoded({extended: true}));
 
-//var cluster = new Couchbase.Cluster("couchbase://localhost");
-var cluster = new Couchbase.Cluster("couchbase://35.223.156.137");	
+var cluster = new Couchbase.Cluster("couchbase://localhost");
+//var cluster = new Couchbase.Cluster("couchbase://35.223.156.137");	
 // For Couchbase > 4.5 with RBAC Auth
 cluster.authenticate('gbisimwa', 'changeme')
 var bucket = cluster.openBucket("BOMOKO_DATA");
@@ -318,38 +318,28 @@ app.post("/credit", (request, response) => {
     }
     bucket.insert(UUID.v4(), credit, (error, result) => {
         if(error){
-            return response.status(500).send(error);
+            //return response.status(500).send(error);
+            return response.status(500).send({ "message": "Erreur interne du serveur"});
+
         }
         response.send(credit);
     });
 });
 
-// app.post("/request_credit", (request, response) =>{
-//     if(!request.body.id_demandeur){
-//         return response.status(401).send({ "message": "Veiller completer le nom du demandeur"});
-//     } else if(!request.pid){
-//         return response.status(401).send({ "message": "Veiller completer le demandeur"});
-//     }else if(!request.somme_demand){
-//         return response.status(401).send({ "message": "Veiller completer la somme_demand"});
-//     }
-//     var request_credit = {
-//         "type": "request_credit",
-//         "pid":request.pid,
-//         "id_demandeur": request.body.id_demandeur,
-//         "somme_demand": request.body.somme_demand,
-//         "id_c": request.body.id_c,
-//         "date_creation": (new Date()).getDate(),
-//         "status": "0"    
-//     }
-//     bucket.insert(UUID.v4(), request_credit, (error, result) => {
-//         if(error){
-//             return response.status(500).send(error);
-//         }
-//         response.send(request_credit);
-//         // TODO Create automatically echeance
-//         // TODO Create automatically payments
-//     });
-// });
+app.get("/credits", (request, response) =>{
+    const id = request.params.id_
+    var query = N1qlQuery.fromString("SELECT "+bucket._name+".* FROM "+bucket._name+" WHERE type = 'credit'");
+    bucket.query(query, { "id": id}, (error, result)=>{
+        if(error){
+            return response.status(500).send(error);
+        }
+        console.log(result)
+        response.send(result);
+    })
+    //console.log(id)
+    //response.send({"id: ":id});
+    //console.log(response)
+});
 
 app.post("/valider_request_credit", (request, response) =>{
     if(!request.body.id_c){
