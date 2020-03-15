@@ -473,6 +473,22 @@ app.get("/credit_by_pid/:id_demandeur", (request, response) => {
     })
 });
 
+app.get("/credit_by_id_g/:id_g", (request, response) => {
+    const _id_g = request.params.id_g
+    var query = N1qlQuery.fromString("SELECT "+bucket._name+".* FROM "+bucket._name+" WHERE type = 'credit' AND id_g=$1");
+    bucket.query(query,[i_d_g], (error, result)=>{
+        if(error){
+            return response.status(500).send({"message":"Aucun credit disponible a ce nom!"});
+        }
+        else if(result.length > 0){
+            response.send(result);
+        }
+        else {
+            return response.status(500).send({"message":"Aucun credit disponible a ce nom!"});
+        }
+    })
+});
+
 app.get("/accounts", (request, response) =>{
     const id = request.params.id_
     var query = N1qlQuery.fromString("SELECT "+bucket._name+".* FROM "+bucket._name+" WHERE type = 'account'");
