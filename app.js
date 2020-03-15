@@ -338,7 +338,7 @@ app.post("/valider_request_credit", (request, response) =>{
         } else {
 
             //valider credit et creer echeance
-            if(result.value.etat <=0){//== 1
+            if(result.value.etat == 1){//== 1
                 return response.status(401).send({ "message": "Votre credit est dja valide"});
             }else {
                 bucket.get(result.value.id_g, function(error_g, result_g) {
