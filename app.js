@@ -476,7 +476,7 @@ app.get("/credit_by_pid/:id_demandeur", (request, response) => {
 app.get("/credit_by_id_g/:id_g", (request, response) => {
     const _id_g = request.params.id_g
     var query = N1qlQuery.fromString("SELECT "+bucket._name+".* FROM "+bucket._name+" WHERE type = 'credit' AND id_g=$1");
-    bucket.query(query,[i_d_g], (error, result)=>{
+    bucket.query(query,[_id_g], (error, result)=>{
         if(error){
             return response.status(500).send({"message":"Aucun credit disponible a ce nom!"});
         }
@@ -536,6 +536,43 @@ app.get("/groups", (request, response) => {
         }
         response.send(result);
     })
+});
+
+/**
+* PUT METHODS 
+ * **/
+
+app.post("/group/:id_g", (request, response) => {
+    const _id_g = request.params.id_g
+    if(!request.body.nom_group){
+        return response.status(401).send({ "message": "Veiller completer le nom du groupe"});
+    } else if(!request.body.details){
+        return response.status(401).send({ "message": "Veiller completer le detail du groupe"});
+    } else if(!request.body.somme){
+        return response.status(401).send({ "message": "Veiller completer la somme du groupe"});
+    }
+    
+    var group = {
+        "type": "group",
+        "pid":request.pid,
+        "nom_group": request.body.nom_group,
+        "id_responsable": request.body.id_responsable,
+        "details": request.body.details,
+        "date_debut": request.body.date_debut,
+        "date_fin": request.body.date_fin,
+        "somme": request.body.somme,
+        "taux": request.body.taux,
+        "cat": request.body.cat,
+        "date_creation": (new Date()).getTime(),
+        "etat": 1,
+        "nbr_jour":request.body.nbr_jour
+    }
+    bucket.replace(_id_g, group, (error, result) => {
+        if(error){
+            return response.status(500).send({"message":"Ce groupe n'existe pas!"});
+        }
+        response.send(group);
+    });
 });
 
 var server = app.listen(3000, () =>{
