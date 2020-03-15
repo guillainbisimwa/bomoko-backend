@@ -338,7 +338,7 @@ app.post("/valider_request_credit", (request, response) =>{
         } else {
 
             //valider credit et creer echeance
-            if(result.value.etat <= 0){//== 1
+            if(result.value.etat <=0){//== 1
                 return response.status(401).send({ "message": "Votre credit est dja valide"});
             }else {
                 bucket.get(result.value.id_g, function(error_g, result_g) {
@@ -352,54 +352,64 @@ app.post("/valider_request_credit", (request, response) =>{
                             if (error_) {
                                 return response.status(500).send(error_);
                             }
-                            //console.log(result.value)
-                            // successfully confirmed 
-                            // Generate Echeance documents
-                            // TODO df = Difference DATE DEBUT et DATE FIN. / CAT 
-                            // To set two dates to two variables 
-                            //1577854800000 : new Date("01/01/2020"); 
-                            //1583125200000 : new Date("03/02/2020"); 
-                            
                             var somme = parseFloat(result.value.somme);
                             var cat = parseFloat(result.value.cat);
                             var interet = parseFloat(request.body.intrt);
-                            var days = (result_g.value.date_fin - result_g.value.date_debut) / (1000 * 3600 * 24);
-                            var nbr_jr = Math.round(days/cat);
+                            var days = (parseFloat(result_g.value.date_fin) - parseFloat(result_g.value.date_debut)) / (1000 * 3600 * 24);
+                            //var nbr_jr = Math.round(days/cat);
+                            var nbr_jr = parseInt(result_g.value.nbr_jour);
+                            console.log(nbr_jr);
+                            console.log(result_g.value.nbr_jour);
+
                             
                             var somme_echeance_single = somme / nbr_jr;
                             var interet_echeance_tot =  (somme * interet)/100;
                             var interet_echeance_single = interet_echeance_tot / nbr_jr;
                             var echeance = [];
+                            etat = 0;
 
                             date_ech = parseFloat(result_g.value.date_debut);
+                            obb = {
+                                id_c: request.body.id_c,
+                                type:'echeance',
+                                etat: etat
+                            }
+
+                            bucket.insert(id_echeance, obb, (error_e, result) => {
+                                if(error_e){
+                                    return response.status(500).send(error_e);
+                                }
+                                //response.send(echeance_obj);
+                                console.log({"result => ":result});
+                            });
                             
                             for(i = 0; i < nbr_jr; i++){
+
                                 date_ech = date_ech + cat;
                                 id_c = request.body.id_c;
-                                etat = 0;
+                                
 
                                 somme_intert = somme_echeance_single + interet_echeance_single;
 
                                 echeance.push({
-                                    id: i,
+                                    id: UUID.v4(),
                                     date_ech: date_ech,
-                                    //id_c: id_c,
-                                    etat: etat,
                                     somme_intert: somme_intert,
                                     somme_sans_inter: somme_echeance_single,
                                     inter: interet_echeance_single,
                                 });
+                                
                             }
-                            
-                            var echeance_obj = { ...echeance }
+                            bucket.mutateIn(id_echeance).insert('echeance', echeance)
+                                .execute(function(err, res) {
+                                    // err.code => errors.SubdocPathExistsError
+                                    if(err){
+                                        return response.status(500).send(err);
+                                    }
+                                    response.send(res);
 
-                            bucket.insert(id_echeance, echeance_obj, (error_e, result) => {
-                                if(error_e){
-                                    return response.status(500).send(error_e);
-                                }
-                                response.send(echeance_obj);
-                                //console.log({"echeance":echeance_obj});
-                            });
+                                });
+                            console.log({"echeance ":echeance});
                         });
                     }
                 });
@@ -459,7 +469,7 @@ app.get("/credits", (request, response) =>{
 
 app.get("/credit_by_pid/:id_demandeur", (request, response) => {
     const _id_demandeur = request.params.id_demandeur
-    var query = N1qlQuery.fromString("SELECT "+bucket._name+".* FROM "+bucket._name+" WHERE type = 'credit' AND id_demandeur=$1");
+    var query = N1qlQuery.fromString("SELECT META().id, "+bucket._name+".* FROM "+bucket._name+" WHERE type = 'credit' AND id_demandeur=$1");
     bucket.query(query,[_id_demandeur], (error, result)=>{
         if(error){
             return response.status(500).send({"message":"Aucun credit disponible a ce nom!"});
@@ -475,7 +485,7 @@ app.get("/credit_by_pid/:id_demandeur", (request, response) => {
 
 app.get("/credit_by_id_g/:id_g", (request, response) => {
     const _id_g = request.params.id_g
-    var query = N1qlQuery.fromString("SELECT "+bucket._name+".* FROM "+bucket._name+" WHERE type = 'credit' AND id_g=$1");
+    var query = N1qlQuery.fromString("SELECT META().id, "+bucket._name+".* FROM "+bucket._name+" WHERE type = 'credit' AND id_g=$1");
     bucket.query(query,[_id_g], (error, result)=>{
         if(error){
             return response.status(500).send({"message":"Aucun credit disponible a ce nom!"});
