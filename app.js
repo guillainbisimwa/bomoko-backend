@@ -445,7 +445,7 @@ app.get("/client_by_phone/:phone_", (request, response) =>{
 
 app.get("/clients", (request, response) =>{
     const id = request.params.id_
-    var query = N1qlQuery.fromString("SELECT "+bucket._name+".* FROM "+bucket._name+" WHERE type = 'profile'");
+    var query = N1qlQuery.fromString("SELECT META().id, "+bucket._name+".* FROM "+bucket._name+" WHERE type = 'profile'");
     bucket.query(query, { "id": id}, (error, result)=>{
         if(error){
             return response.status(500).send(error);
