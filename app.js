@@ -455,6 +455,18 @@ app.get("/clients", (request, response) =>{
     })
 });
 
+app.get("/echeances", (request, response) =>{
+    const id = request.params.id_
+    var query = N1qlQuery.fromString("SELECT META().id, "+bucket._name+".* FROM "+bucket._name+" WHERE type = 'echeance'");
+    bucket.query(query, { "id": id}, (error, result)=>{
+        if(error){
+            return response.status(500).send(error);
+        }
+        console.log(result)
+        response.send(result);
+    })
+});
+
 app.get("/credits", (request, response) =>{
     const id = request.params.id_
     var query = N1qlQuery.fromString("SELECT META().id, "+bucket._name+".* FROM "+bucket._name+" WHERE type = 'credit'");
