@@ -17,6 +17,7 @@ numerous examples and samples.
 ### Run couchbase
 ## For the first time
 `sudo docker run -d --name db -p 8091-8096:8091-8096 -p 11210-11211:11210-11211 36248dbc0a28`
+`sudo docker run -d --name db -p 8091-8096:8091-8096 -p 11210-11211:11210-11211 c98f53078b88`
 
 ## For the other times, 
 Look for the container and start it
